@@ -7,6 +7,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpookyLlama", "SpookyLlama\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpookyLlamaCommon", "SpookyLlamaCommon\SpookyLlamaCommon.csproj", "{C0C4D972-8F2A-4D23-A636-8013B2133CF8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpookyLlamaBlazor", "SpookyLlamaBlazor\SpookyLlamaBlazor.csproj", "{ADFBFC0E-B027-4E23-8C76-F9061EE03805}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpookyLlamaApi", "SpookyLlamaApi\SpookyLlamaApi.csproj", "{91E836B3-ADF4-4685-8AFB-4D722B1A69E5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +25,14 @@ Global
 		{C0C4D972-8F2A-4D23-A636-8013B2133CF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C0C4D972-8F2A-4D23-A636-8013B2133CF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C0C4D972-8F2A-4D23-A636-8013B2133CF8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ADFBFC0E-B027-4E23-8C76-F9061EE03805}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ADFBFC0E-B027-4E23-8C76-F9061EE03805}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ADFBFC0E-B027-4E23-8C76-F9061EE03805}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ADFBFC0E-B027-4E23-8C76-F9061EE03805}.Release|Any CPU.Build.0 = Release|Any CPU
+		{91E836B3-ADF4-4685-8AFB-4D722B1A69E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{91E836B3-ADF4-4685-8AFB-4D722B1A69E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{91E836B3-ADF4-4685-8AFB-4D722B1A69E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{91E836B3-ADF4-4685-8AFB-4D722B1A69E5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

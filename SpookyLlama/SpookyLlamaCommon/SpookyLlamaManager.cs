@@ -3,6 +3,7 @@ using KokoroSharp.Core;
 using KokoroSharp.Utilities;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace SpookyLlamaCommon;
 
@@ -10,8 +11,15 @@ public class SpookyLlamaManager
 {
     private static readonly object LockObject = new();
     private static KokoroVoice? voice;
+    private static int fileCounter = 0;
 
-    public static async Task RunSpookyLlamaAsync()
+    public async Task<string[]> GetSpookyLlamaResponseAsync(string prompt, long[] context)
+    {
+        KokoroTTS tts = LoadAndInitializeKokoroModelAndVoices();
+        return await ProcessSpookyLlamaResponseAsync(true, tts, prompt, [.. context]);
+    }
+
+    public static async Task RunSpookyLlamaAsync(bool saveToFile = false)
     {
         KokoroTTS tts = LoadAndInitializeKokoroModelAndVoices();
 
@@ -22,31 +30,8 @@ public class SpookyLlamaManager
         var context = new List<long>();
         while (!string.IsNullOrEmpty(prompt))
         {
-            // If the prompt is null or empty, exit the program
-            if (string.IsNullOrEmpty(prompt))
-            {
-                return;
-            }
-
             Console.WriteLine("SpookyLlama is thinking...\n");
-
-            // Get the chat response from the local LLaMA 3.2 API
-            var chatWordsList = new List<ChatResponse>();
-            await foreach (var chatWord in GetChatResponse(prompt, context))
-            {
-                // Add the chat word to the list
-                chatWordsList.Add(chatWord);
-                // If the chat word is a punctuation mark, speak the current phrases
-                if (chatWord != null &&
-                    (chatWord.response == "." || chatWord.response == "!" || chatWord.response == "?"))
-                {
-                    SpeakChatWords(tts, chatWordsList);
-                    chatWordsList.Clear();
-                }
-            }
-
-            // Speak any remaining chat words after the response is complete
-            SpeakChatWords(tts, chatWordsList);
+            await ProcessSpookyLlamaResponseAsync(saveToFile, tts, prompt, context);
 
             Console.WriteLine("\n\nSpookyLlama has finished responding.\n");
             Console.WriteLine("\n\t\t---\t\t");
@@ -54,7 +39,46 @@ public class SpookyLlamaManager
         }
     }
 
-    private static KokoroTTS LoadAndInitializeKokoroModelAndVoices()
+    public static async Task<string[]> ProcessSpookyLlamaResponseAsync(bool saveToFile, KokoroTTS tts, string? prompt, List<long> context)
+    {
+        // If the prompt is null or empty, exit the program
+        if (string.IsNullOrEmpty(prompt))
+        {
+            return Array.Empty<string>();
+        }
+
+        // Get the chat response from the local LLaMA 3.2 API
+        var chatWordsList = new List<ChatResponse>();
+        await foreach (var chatWord in GetChatResponse(prompt, context))
+        {
+            // Add the chat word to the list
+            chatWordsList.Add(chatWord);
+            // If the chat word is a punctuation mark, speak the current phrases
+            if (chatWord != null &&
+                (chatWord.response == "." || chatWord.response == "!" || chatWord.response == "?"))
+            {
+                SpeakChatWordsOrSaveToWav(tts, chatWordsList, saveToFile);
+                chatWordsList.Clear();
+            }
+        }
+
+        // Speak any remaining chat words after the response is complete
+        SpeakChatWordsOrSaveToWav(tts, chatWordsList, saveToFile);
+
+        // Return the saved WAV file paths if saving to file
+        if (saveToFile)
+        {
+            var waveFilePaths = new List<string>();
+            for (int i = 0; i <= fileCounter; i++)
+            {
+                waveFilePaths.Add(Path.Combine(Directory.GetCurrentDirectory(), $"output{i}.wav"));
+            }
+            return waveFilePaths.ToArray();
+        }
+        return Array.Empty<string>();
+    }
+
+    public static KokoroTTS LoadAndInitializeKokoroModelAndVoices()
     {
         // Load the TTS model
         var tts = KokoroTTS.LoadModel();
@@ -122,6 +146,18 @@ public class SpookyLlamaManager
         }
     }
 
+    private static void SpeakChatWordsOrSaveToWav(KokoroTTS tts, IEnumerable<ChatResponse?>? chatWords, bool saveToWav)
+    {
+        if (saveToWav)
+        {
+            SpeakChatWordsToWav(tts, chatWords);
+        }
+        else
+        {
+            SpeakChatWords(tts, chatWords);
+        }
+    }
+
     private static void SpeakChatWords(KokoroTTS tts, IEnumerable<ChatResponse?>? chatWords)
     {
         // If chatWords is null, return early
@@ -163,9 +199,10 @@ public class SpookyLlamaManager
             // Synthesize the audio and save it to a WAV file
             var kokoroWavSynthesizer = new KokoroWavSynthesizer("kokoro.onnx");
             var audioBytes = kokoroWavSynthesizer.Synthesize(phraseBuilder.ToString(), voice);
-            var waveFilePath = Path.Combine(Directory.GetCurrentDirectory(), "output.wav");
+            var waveFilePath = Path.Combine(Directory.GetCurrentDirectory(), $"output{fileCounter}.wav");
             kokoroWavSynthesizer.SaveAudioToFile(audioBytes, waveFilePath);
         }
+        fileCounter++;
     }
 
     private static StringBuilder BuildPhraseFromChatWords(IEnumerable<ChatResponse?> chatWords)
