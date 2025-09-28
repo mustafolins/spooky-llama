@@ -1,14 +1,24 @@
 ﻿using System.Text;
 using System.Text.Json;
 using KokoroSharp;
-using KokoroSharp.Utilities;
+using KokoroSharp.Core;
 
 public class Program
 {
+    private static object LockObject = new();
+    private static KokoroVoice? voice;
+
     private static async Task Main(string[] args)
     {
         // Load the TTS model
         var tts = KokoroTTS.LoadModel();
+
+        // Initialize the speech synthesizer
+        var voice1 = KokoroVoiceManager.GetVoice("af_nicole");
+        var voice2 = KokoroVoiceManager.GetVoice("am_echo");
+        voice = KokoroVoiceManager.Mix(
+                    [(voice1, 10.0f),
+                (voice2, 3.0f)]);
 
         // Prompt the user for input
         Console.WriteLine("Welcome to SpookyLlama! Type your prompt and press Enter to get a response. Type nothing and press Enter to exit.");
@@ -26,16 +36,30 @@ public class Program
             Console.WriteLine("SpookyLlama is thinking...\n");
 
             // Get the chat response from the local LLaMA 3.2 API
-            IEnumerable<ChatResponse?> chatWords = await GetChatResponse(prompt, context);
+            var chatWordsList = new List<ChatResponse>();
+            await foreach (var chatWord in GetChatResponse(prompt, context))
+            {
+                // Add the chat word to the list
+                chatWordsList.Add(chatWord);
+                // If the chat word is a punctuation mark, speak the current phrases
+                if (chatWord != null && 
+                    (chatWord.response == "." || chatWord.response == "!" || chatWord.response == "?"))
+                {
+                    SpeakChatWords(tts, chatWordsList);
+                    chatWordsList.Clear();
+                }
+            }
 
-            // Speak the chat response using Kokoro TTS
-            SpeakChatWords(tts, chatWords);
+            // Speak any remaining chat words after the response is complete
+            SpeakChatWords(tts, chatWordsList);
+
+            Console.WriteLine("\n\nSpookyLlama has finished responding.\n");
             Console.WriteLine("\n\t\t---\t\t");
             prompt = Console.ReadLine();
         }
     }
 
-    private static async Task<IEnumerable<ChatResponse?>> GetChatResponse(string prompt, List<long> context)
+    private static async IAsyncEnumerable<ChatResponse> GetChatResponse(string prompt, List<long> context)
     {
         // Call the local LLaMA 3.2 API locally hosted at http://localhost:11434/api/generate
         var client = new HttpClient();
@@ -59,23 +83,34 @@ public class Program
         var response = await client.SendAsync(request);
         response.EnsureSuccessStatusCode();
 
-        var responseBody = await response.Content.ReadAsStringAsync();
+        var stream = await response.Content.ReadAsStreamAsync();
+        using var reader = new StreamReader(stream);
 
-        var chatResponses = responseBody
-            .Split("}\n")
-            .SkipLast(2)
-            .Select(str => JsonSerializer.Deserialize<ChatResponse>(str + "}"));
-
-        var finalChatWord = JsonSerializer.Deserialize<FinalChatWord>(
-            responseBody.Split("}\n").Skip(chatResponses.Count()).Take(1).First() + "}");
-        if (finalChatWord != null)
+        // Read the response line by line and yield return each chat word as it arrives
+        while (!reader.EndOfStream)
         {
-            context.Clear();
-            context.AddRange(finalChatWord.context);
+            // Read a line from the response stream
+            var line = await reader.ReadLineAsync();
+            if (line != null)
+            {
+                // Deserialize the line into a ChatResponse object
+                var chatResponse = JsonSerializer.Deserialize<ChatResponse>(line);
+                if (chatResponse != null && !string.IsNullOrWhiteSpace(chatResponse.response))
+                {
+                    yield return chatResponse;
+                }
+                // If the chat response indicates it's done, update the context
+                else if (chatResponse != null && chatResponse.done)
+                {
+                    var finalChatWord = JsonSerializer.Deserialize<FinalChatWord>(line);
+                    if (finalChatWord != null)
+                    {
+                        context.Clear();
+                        context.AddRange(finalChatWord.context);
+                    }
+                }
+            }
         }
-
-        // Return the deserialized chat words
-        return chatResponses;
     }
 
     private static void SpeakChatWords(KokoroTTS tts, IEnumerable<ChatResponse?>? chatWords)
@@ -83,30 +118,30 @@ public class Program
         // If chatWords is null, return early
         if (chatWords == null) return;
 
-        // Initialize the speech synthesizer
-        var voice1 = KokoroVoiceManager.GetVoice("af_nicole");
-        var voice2 = KokoroVoiceManager.GetVoice("am_echo");
+        lock (LockObject)
+        {
+            // Build the full phrase from the chat words and speak it
+            var phraseBuilder = BuildPhraseFromChatWords(chatWords);
 
-        // Build the full phrase from the chat words and speak it
-        var phraseBuilder = BuildPhraseFromChatWords(chatWords);
+            if (phraseBuilder.Length == 0) return; // Nothing to speak
 
-        // Speak the full phrase
-        var doneSpeaking = false;
-        var synthesisHandle = tts.SpeakFast(
-            phraseBuilder.ToString(),
-            KokoroVoiceManager.Mix(
-                [(voice1, 10.0f),
-                (voice2, 3.0f)])
-            );
-        synthesisHandle.OnSpeechCompleted += (s) => doneSpeaking = true;
+            // Speak the full phrase
+            var synthesisHandle = tts.SpeakFast(
+                phraseBuilder.ToString(),
+                voice
+                );
+            var doneSpeaking = false;
+            synthesisHandle.OnSpeechCompleted += (s) => doneSpeaking = true;
 
-        // Wait for the synthesis to complete
-        while (!doneSpeaking)
-            Thread.Sleep(1_000); // Wait for a second to ensure the speech is completed before exiting
+            // Wait for the synthesis to complete
+            while (!doneSpeaking)
+                Thread.Sleep(5000); // Wait for a second to ensure the speech is completed before exiting 
+        }
     }
 
     private static StringBuilder BuildPhraseFromChatWords(IEnumerable<ChatResponse?> chatWords)
     {
+        // Build the full phrase from the chat words
         var phraseBuilder = new StringBuilder();
         foreach (var chatWord in chatWords)
         {
