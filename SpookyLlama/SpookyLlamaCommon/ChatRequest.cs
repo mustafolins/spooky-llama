@@ -1,4 +1,6 @@
-﻿public class ChatRequest
+﻿namespace SpookyLlamaCommon;
+
+public class ChatRequest
 {
     public string model { get; set; }
     public string prompt { get; set; }

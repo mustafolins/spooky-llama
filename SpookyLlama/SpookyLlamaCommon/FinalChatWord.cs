@@ -1,4 +1,6 @@
-﻿public class FinalChatWord : ChatResponse
+﻿using SpookyLlamaCommon;
+
+public class FinalChatWord : ChatResponse
 {
     public string done_reason { get; set; }
     public long[] context { get; set; }
