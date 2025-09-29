@@ -3,7 +3,6 @@ using KokoroSharp.Core;
 using KokoroSharp.Utilities;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace SpookyLlamaCommon;
 
@@ -11,12 +10,18 @@ public class SpookyLlamaManager
 {
     private static readonly object LockObject = new();
     private static KokoroVoice? voice;
-    private static int fileCounter = 0;
 
-    public async Task<string[]> GetSpookyLlamaResponseAsync(string prompt, long[] context)
+    public static async Task<string> GetSpookyLlamaResponseAsync(string prompt, List<long> context)
     {
+        // Load and initialize the Kokoro TTS model and voices
         KokoroTTS tts = LoadAndInitializeKokoroModelAndVoices();
-        return await ProcessSpookyLlamaResponseAsync(true, tts, prompt, [.. context]);
+
+        // Process the SpookyLlama response and update the context
+        // We don't need the actual response string here, just the updated context
+        var promptResponse = await ProcessSpookyLlamaResponseAsync(false, tts, prompt, context);
+
+        // Return the updated context
+        return promptResponse;
     }
 
     public static async Task RunSpookyLlamaAsync(bool saveToFile = false)
@@ -39,13 +44,15 @@ public class SpookyLlamaManager
         }
     }
 
-    public static async Task<string[]> ProcessSpookyLlamaResponseAsync(bool saveToFile, KokoroTTS tts, string? prompt, List<long> context)
+    public static async Task<string> ProcessSpookyLlamaResponseAsync(bool saveToFile, KokoroTTS tts, string? prompt, List<long> context)
     {
         // If the prompt is null or empty, exit the program
         if (string.IsNullOrEmpty(prompt))
         {
-            return Array.Empty<string>();
+            return "";
         }
+
+        var sb = new StringBuilder();
 
         // Get the chat response from the local LLaMA 3.2 API
         var chatWordsList = new List<ChatResponse>();
@@ -58,6 +65,7 @@ public class SpookyLlamaManager
                 (chatWord.response == "." || chatWord.response == "!" || chatWord.response == "?"))
             {
                 SpeakChatWordsOrSaveToWav(tts, chatWordsList, saveToFile);
+                sb.Append(string.Join("", chatWordsList.Select(cw => cw?.response ?? "")));
                 chatWordsList.Clear();
             }
         }
@@ -65,17 +73,8 @@ public class SpookyLlamaManager
         // Speak any remaining chat words after the response is complete
         SpeakChatWordsOrSaveToWav(tts, chatWordsList, saveToFile);
 
-        // Return the saved WAV file paths if saving to file
-        if (saveToFile)
-        {
-            var waveFilePaths = new List<string>();
-            for (int i = 0; i <= fileCounter; i++)
-            {
-                waveFilePaths.Add(Path.Combine(Directory.GetCurrentDirectory(), $"output{i}.wav"));
-            }
-            return waveFilePaths.ToArray();
-        }
-        return Array.Empty<string>();
+        sb.Append(string.Join("", chatWordsList.Select(cw => cw?.response ?? "")));
+        return sb.ToString();
     }
 
     public static KokoroTTS LoadAndInitializeKokoroModelAndVoices()
@@ -146,16 +145,17 @@ public class SpookyLlamaManager
         }
     }
 
-    private static void SpeakChatWordsOrSaveToWav(KokoroTTS tts, IEnumerable<ChatResponse?>? chatWords, bool saveToWav)
+    private static byte[] SpeakChatWordsOrSaveToWav(KokoroTTS tts, IEnumerable<ChatResponse?>? chatWords, bool saveToWav)
     {
         if (saveToWav)
         {
-            SpeakChatWordsToWav(tts, chatWords);
+            return SpeakChatWordsToWav(chatWords);
         }
         else
         {
             SpeakChatWords(tts, chatWords);
         }
+        return [];
     }
 
     private static void SpeakChatWords(KokoroTTS tts, IEnumerable<ChatResponse?>? chatWords)
@@ -184,25 +184,22 @@ public class SpookyLlamaManager
         }
     }
 
-    private static void SpeakChatWordsToWav(KokoroTTS tts, IEnumerable<ChatResponse?>? chatWords)
+    private static byte[] SpeakChatWordsToWav(IEnumerable<ChatResponse?>? chatWords)
     {
         // If chatWords is null, return early
-        if (chatWords == null) return;
+        if (chatWords == null) return [];
 
         lock (LockObject)
         {
             // Build the full phrase from the chat words and speak it
             var phraseBuilder = BuildPhraseFromChatWords(chatWords);
 
-            if (phraseBuilder.Length == 0) return; // Nothing to speak
+            if (phraseBuilder.Length == 0) return []; // Nothing to speak
 
             // Synthesize the audio and save it to a WAV file
             var kokoroWavSynthesizer = new KokoroWavSynthesizer("kokoro.onnx");
-            var audioBytes = kokoroWavSynthesizer.Synthesize(phraseBuilder.ToString(), voice);
-            var waveFilePath = Path.Combine(Directory.GetCurrentDirectory(), $"output{fileCounter}.wav");
-            kokoroWavSynthesizer.SaveAudioToFile(audioBytes, waveFilePath);
+            return kokoroWavSynthesizer.Synthesize(phraseBuilder.ToString(), voice);
         }
-        fileCounter++;
     }
 
     private static StringBuilder BuildPhraseFromChatWords(IEnumerable<ChatResponse?> chatWords)

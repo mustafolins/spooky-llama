@@ -5,39 +5,35 @@
 
 <h1>Spooky Llama</h1>
 
-<p>Welcome to Spooky Llama!</p>
+<h2>Welcome to Spooky Llama!</h2>
+<p>Enter a prompt to generate a spooky story:</p>
 
 <input type="text" @bind-value="@Prompt" />
 <button onclick="@GenerateAndPlay">Generate</button>
+<br />
 
-<audio controls>
-    <source src="@CurrentAudioUrl" />
-</audio>
-
-@code {
-    public string Prompt { get; set; } = "Tell me a spooky story";
-    public string CurrentAudioUrl { get; set; } = string.Empty;
-    public List<string> AudioUrls { get; set; } = [];
-
-    private async Task GenerateAndPlay()
-    {
-        var httpClient = new HttpClient();
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://localhost:7233/api/spookyllama");
-        var content = new StringContent(
-            $"{{\"prompt\": \"{Prompt}\", \"context\":[]}}", // TODO: Make Context not be an empty array
-            null,
-            "application/json");
-        request.Content = content;
-
-        // Send the request and get the response
-        var response = await httpClient.SendAsync(request);
-        response.EnsureSuccessStatusCode();
-
-        var responseBody = await response.Content.ReadAsStringAsync();
-        AudioUrls.AddRange(JsonSerializer.Deserialize<string[]>(responseBody) ?? []);
-
-        CurrentAudioUrl = AudioUrls.LastOrDefault() ?? string.Empty;
-
-        StateHasChanged();
-    }
+<button onclick="@GetLatestResponse">Get Latest Response</button>
+@if (!string.IsNullOrEmpty(LatestResponse))
+{
+    <h3>Latest Response:</h3>
+    <p>@LatestResponse</p>
 }
+<br />
+
+<button onclick="@GetAllResponses">Get All Responses</button>
+<button onclick="@ClearResponses">Clear Resposnes</button>
+<br />
+@if (Responses.Any())
+{
+    <h3>All Responses:</h3>
+    <ul>
+        @foreach (var response in Responses)
+        {
+            <li>@response</li>
+        }
+    </ul>
+}
+
+<br />
+<p>Want a new context for your story? Click the button below:</p>
+<button onclick="@ClearContext">Clear Context</button>
