@@ -10,6 +10,7 @@ public class SpookyLlamaManager
 {
     private static readonly object LockObject = new();
     private static KokoroVoice? voice;
+    private static KokoroTTS? KokoroTTS = null;
 
     public static async Task<string> GetSpookyLlamaResponseAsync(string prompt, List<long> context)
     {
@@ -79,8 +80,11 @@ public class SpookyLlamaManager
 
     public static KokoroTTS LoadAndInitializeKokoroModelAndVoices()
     {
+        // If the Kokoro TTS model is already loaded, return it
+        if (KokoroTTS != null) return KokoroTTS;
+
         // Load the TTS model
-        var tts = KokoroTTS.LoadModel();
+        KokoroTTS = KokoroTTS.LoadModel();
 
         // Initialize the speech synthesizer
         var voice1 = KokoroVoiceManager.GetVoice("af_nicole");
@@ -88,7 +92,7 @@ public class SpookyLlamaManager
         voice = KokoroVoiceManager.Mix(
                     [(voice1, 10.0f),
                 (voice2, 3.0f)]);
-        return tts;
+        return KokoroTTS;
     }
 
     private static async IAsyncEnumerable<ChatResponse> GetChatResponse(string prompt, List<long> context)
