@@ -1,5 +1,4 @@
 ﻿@page "/"
-@using System.Text.Json
 
 <PageTitle>Spooky Llama</PageTitle>
 
@@ -8,11 +7,18 @@
 <h2>Welcome to Spooky Llama!</h2>
 <p>Enter a prompt to generate a spooky story:</p>
 
-<input type="text" @bind-value="@Prompt" />
-<button onclick="@GenerateAndPlay">Generate</button>
+<input type="text" @bind-value="@Prompt" disabled="@IsGenerating" />
+<button @onclick="GenerateAndPlay" disabled="@IsGenerating">
+    @(IsGenerating ? "Generating..." : "Generate")
+</button>
+<audio @ref="audioPlayer" controls></audio>
+@if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <p role="alert">@ErrorMessage</p>
+}
 <br />
 
-<button onclick="@GetLatestResponse">Get Latest Response</button>
+<button @onclick="GetLatestResponse">Get Latest Response</button>
 @if (!string.IsNullOrEmpty(LatestResponse))
 {
     <h3>Latest Response:</h3>
@@ -20,8 +26,8 @@
 }
 <br />
 
-<button onclick="@GetAllResponses">Get All Responses</button>
-<button onclick="@ClearResponses">Clear Resposnes</button>
+<button @onclick="GetAllResponses">Get All Responses</button>
+<button @onclick="ClearResponses">Clear Responses</button>
 <br />
 @if (Responses.Any())
 {
@@ -36,4 +42,4 @@
 
 <br />
 <p>Want a new context for your story? Click the button below:</p>
-<button onclick="@ClearContext">Clear Context</button>
+<button @onclick="ClearContext">Clear Context</button>

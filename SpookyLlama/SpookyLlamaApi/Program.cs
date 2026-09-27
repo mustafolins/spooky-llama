@@ -2,10 +2,16 @@ using SpookyLlamaCommon;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
+
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+var ollamaUri = builder.Configuration["LLAMA_URI"] ?? "http://localhost:11434";
+var ollamaModel = builder.Configuration["LLAMA_MODEL"] ?? "llama3.2";
+builder.Services.AddHttpClient("ollama", client => client.BaseAddress = new Uri(ollamaUri));
 
 builder.Services.AddCors(options =>
 {
@@ -18,6 +24,8 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+app.MapDefaultEndpoints();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -38,7 +46,7 @@ var context = new List<long>();
 var responses = new List<string>();
 
 // Endpoint to generate SpookyLlama response
-app.MapPost("/api/spookyllama", async (SpookyLlamaRequest request) =>
+app.MapPost("/api/spookyllama", async (SpookyLlamaRequest request, IHttpClientFactory httpClientFactory) =>
 {
     if (request == null || string.IsNullOrWhiteSpace(request.Prompt))
     {
@@ -46,9 +54,14 @@ app.MapPost("/api/spookyllama", async (SpookyLlamaRequest request) =>
     }
     try
     {
-        // Get the response from SpookyLlamaManager and add it to the responses list
-        responses.Add(await SpookyLlamaManager.GetSpookyLlamaResponseAsync(request.Prompt, context));
-        return Results.Created();
+        var ollamaClient = httpClientFactory.CreateClient("ollama");
+        var generatedResponse = await SpookyLlamaManager.GetSpookyLlamaResponseAsync(
+            request.Prompt,
+            context,
+            ollamaClient,
+            ollamaModel);
+        responses.Add(generatedResponse);
+        return Results.Created("/api/spookyllama/response", generatedResponse);
     }
     catch (Exception ex)
     {

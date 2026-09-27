@@ -8,10 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\SpookyLlamaBlazor\Pages\Home.razor.cs" Link="Home.razor.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\SpookyLlamaCommon\SpookyLlamaCommon.csproj" />
   </ItemGroup>
 

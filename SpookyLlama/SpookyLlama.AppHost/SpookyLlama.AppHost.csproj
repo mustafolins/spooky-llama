@@ -1,0 +1,23 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.5.4">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AspireUseCliBundle>true</AspireUseCliBundle>
+    <UserSecretsId>5e6db2a4-b9f6-4519-9668-ff2d7376cf63</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Blazor" Version="13.5.4-preview.1.26464.4" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Ollama" Version="13.5.1-beta.775" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SpookyLlamaApi\SpookyLlamaApi.csproj" />
+    <ProjectReference Include="..\SpookyLlamaBlazor\SpookyLlamaBlazor.csproj" />
+    <ProjectReference Include="..\SpookyLlamaSpeechService\SpookyLlamaSpeechService.csproj" />
+  </ItemGroup>
+
+</Project>

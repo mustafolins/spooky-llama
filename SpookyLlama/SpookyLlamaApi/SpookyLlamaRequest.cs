@@ -1,4 +1,4 @@
 ﻿public class SpookyLlamaRequest
 {
-    public string Prompt { get; set; }
+    public string Prompt { get; set; } = string.Empty;
 }

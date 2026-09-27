@@ -7,12 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.20" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="KokoroSharp.CPU" Version="0.8.4" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SpookyLlamaCommon\SpookyLlamaCommon.csproj" />
     <ProjectReference Include="..\SpookyLlama.ServiceDefaults\SpookyLlama.ServiceDefaults.csproj" />
   </ItemGroup>
 
