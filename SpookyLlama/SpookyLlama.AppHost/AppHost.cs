@@ -39,17 +39,14 @@ var image = builder.AddUvicornApp(
 			"huggingface"))
 	.WithHttpHealthCheck("/health");
 
-var client = builder.AddBlazorWasmProject<Projects.SpookyLlamaBlazor>("app")
-	.WithReference(api)
-	.WithReference(speech)
-	.WithReference(image);
-
-builder.AddBlazorGateway("web")
+builder.AddProject<Projects.SpookyLlamaBlazor>("web")
 	.WithExternalHttpEndpoints()
-	.WithOtlpExporter(OtlpProtocol.HttpProtobuf)
-	.WithBlazorClientApp(client)
+	.WithHttpHealthCheck("/health")
+	.WithReference(api)
 	.WaitFor(api)
+	.WithReference(speech)
 	.WaitFor(speech)
+	.WithReference(image)
 	.WaitFor(image);
 
 builder.Build().Run();

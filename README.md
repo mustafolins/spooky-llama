@@ -1,6 +1,6 @@
 ﻿# Spooky Llama
 
-Spooky Llama is an Aspire application that combines a Blazor WebAssembly client, an ASP.NET Core API, a local Ollama model, Kokoro text-to-speech, and DreamShaper image generation.
+Spooky Llama is an Aspire application that combines an Interactive Server Blazor Web App, an ASP.NET Core API, a local Ollama model, Kokoro text-to-speech, and DreamShaper image generation.
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@ cd SpookyLlama/SpookyLlama.AppHost
 aspire run
 ```
 
-Open the `app` endpoint from the Aspire dashboard. The first run pulls the Ollama image and the `llama3.2` model, so it can take a few minutes. Ollama model data is stored in a persistent container volume and reused on later runs.
+Open the `web` endpoint from the Aspire dashboard. The first run pulls the Ollama image and the `llama3.2` model, so it can take a few minutes. Ollama model data is stored in a persistent container volume and reused on later runs.
 
 The first spoken response also downloads the Kokoro model to `~/.local/share/spooky-llama/models/kokoro.onnx` on Linux. That model is reused across Aspire restarts.
 
@@ -32,8 +32,7 @@ The AppHost starts these resources:
 - `api`: the Spooky Llama chat API
 - `speech`: the Kokoro WAV synthesis service
 - `image`: the Python DreamShaper image-generation service
-- `app`: the Blazor WebAssembly client
-- `web`: the browser-facing Blazor gateway
+- `web`: the Interactive Server Blazor application
 
 ## Build
 

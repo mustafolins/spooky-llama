@@ -4,7 +4,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.Services.AddProblemDetails();
-builder.Services.AddHttpClient("kokoro-model");
+builder.Services.AddHttpClient("kokoro-model")
+	.AddStandardResilienceHandler();
 builder.Services.AddSingleton<ISpeechSynthesizer, KokoroSpeechSynthesizer>();
 
 var app = builder.Build();

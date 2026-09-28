@@ -11,7 +11,11 @@ builder.Services.AddSwaggerGen();
 
 var ollamaUri = builder.Configuration["LLAMA_URI"] ?? "http://localhost:11434";
 var ollamaModel = builder.Configuration["LLAMA_MODEL"] ?? "llama3.2";
-builder.Services.AddHttpClient("ollama", client => client.BaseAddress = new Uri(ollamaUri));
+builder.Services.AddHttpClient("ollama", client =>
+{
+    client.BaseAddress = new Uri(ollamaUri);
+    client.Timeout = TimeSpan.FromMinutes(3);
+});
 
 builder.Services.AddCors(options =>
 {

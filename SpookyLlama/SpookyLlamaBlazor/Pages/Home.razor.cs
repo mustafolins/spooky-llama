@@ -6,6 +6,8 @@ namespace SpookyLlamaBlazor.Pages
 {
     public partial class Home : IAsyncDisposable
     {
+        private const string DefaultPrompt = "Tell me a spooky story";
+
         [Inject]
         private HttpClient HttpClient { get; set; } = default!;
 
@@ -18,18 +20,21 @@ namespace SpookyLlamaBlazor.Pages
         [Inject]
         private IJSRuntime JSRuntime { get; set; } = default!;
 
+        [Inject]
+        private ILogger<Home> Logger { get; set; } = default!;
+
         private ElementReference audioPlayer;
         private ElementReference generatedImage;
         private IJSObjectReference? audioModule;
         private IJSObjectReference? imageModule;
 
-        public string Prompt { get; set; } = "Tell me a spooky story";
+        public string Prompt { get; set; } = DefaultPrompt;
         public string LatestResponse { get; set; } = string.Empty;
         public List<string> Responses { get; set; } = [];
         public bool IsGenerating { get; set; }
         public bool IsGeneratingImage { get; set; }
         public bool HasGeneratedImage { get; set; }
-        public string ImagePrompt { get; set; } = string.Empty;
+        public string ImagePrompt { get; set; } = DefaultPrompt;
         public string ImageMetadata { get; set; } = string.Empty;
         public string ErrorMessage { get; set; } = string.Empty;
 
@@ -81,8 +86,9 @@ namespace SpookyLlamaBlazor.Pages
                 HasGeneratedImage = true;
                 ImageMetadata = $"{image.Model ?? "DreamShaper 8"} · seed {image.Seed ?? "random"}";
             }
-            catch (Exception)
+            catch (Exception exception)
             {
+                Logger.LogError(exception, "Image generation failed.");
                 ErrorMessage = "The image could not be generated.";
             }
             finally

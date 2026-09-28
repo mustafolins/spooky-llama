@@ -1,23 +1,52 @@
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using SpookyLlamaBlazor;
 
-var builder = WebAssemblyHostBuilder.CreateDefault(args);
-builder.RootComponents.Add<App>("#app");
-builder.RootComponents.Add<HeadOutlet>("head::after");
+var builder = WebApplication.CreateBuilder(args);
 
-var appBaseAddress = new Uri(builder.HostEnvironment.BaseAddress);
-builder.Services.AddScoped(_ => new HttpClient
+builder.AddServiceDefaults();
+builder.Services.AddRazorComponents()
+	.AddInteractiveServerComponents();
+
+builder.Services.AddHttpClient("api", client =>
 {
-	BaseAddress = new Uri(appBaseAddress, "_api/api/")
+    client.BaseAddress = new Uri("https+http://api");
+    client.Timeout = TimeSpan.FromMinutes(3);
 });
-builder.Services.AddScoped(_ => new SpeechClient(new HttpClient
+builder.Services.AddScoped(provider =>
+    provider.GetRequiredService<IHttpClientFactory>().CreateClient("api"));
+builder.Services.AddHttpClient<SpeechClient>(client =>
 {
-	BaseAddress = new Uri(appBaseAddress, "_api/speech/")
-}));
+    client.BaseAddress = new Uri("https+http://speech");
+    client.Timeout = TimeSpan.FromMinutes(3);
+});
+var imageEndpoint = builder.Configuration["services:image:https:0"]
+    ?? builder.Configuration["services:image:http:0"];
+if (imageEndpoint is null && !builder.Environment.IsDevelopment())
+{
+    throw new InvalidOperationException("The Aspire image service endpoint is not configured.");
+}
+
+imageEndpoint ??= "http://localhost:8000";
 builder.Services.AddScoped(_ => new ImageClient(new HttpClient
 {
-	BaseAddress = new Uri(appBaseAddress, "_api/image/")
+    BaseAddress = new Uri(imageEndpoint),
+    Timeout = TimeSpan.FromMinutes(3)
 }));
 
-await builder.Build().RunAsync();
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+	app.UseExceptionHandler("/Error", createScopeForErrors: true);
+	app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseAntiforgery();
+
+app.MapRazorComponents<App>()
+	.AddInteractiveServerRenderMode();
+
+app.MapDefaultEndpoints();
+
+app.Run();
