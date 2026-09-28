@@ -15,5 +15,9 @@ builder.Services.AddScoped(_ => new SpeechClient(new HttpClient
 {
 	BaseAddress = new Uri(appBaseAddress, "_api/speech/")
 }));
+builder.Services.AddScoped(_ => new ImageClient(new HttpClient
+{
+	BaseAddress = new Uri(appBaseAddress, "_api/image/")
+}));
 
 await builder.Build().RunAsync();

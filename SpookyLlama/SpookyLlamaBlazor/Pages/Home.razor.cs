@@ -13,15 +13,24 @@ namespace SpookyLlamaBlazor.Pages
         private SpeechClient SpeechClient { get; set; } = default!;
 
         [Inject]
+        private ImageClient ImageClient { get; set; } = default!;
+
+        [Inject]
         private IJSRuntime JSRuntime { get; set; } = default!;
 
         private ElementReference audioPlayer;
+        private ElementReference generatedImage;
         private IJSObjectReference? audioModule;
+        private IJSObjectReference? imageModule;
 
         public string Prompt { get; set; } = "Tell me a spooky story";
         public string LatestResponse { get; set; } = string.Empty;
         public List<string> Responses { get; set; } = [];
         public bool IsGenerating { get; set; }
+        public bool IsGeneratingImage { get; set; }
+        public bool HasGeneratedImage { get; set; }
+        public string ImagePrompt { get; set; } = string.Empty;
+        public string ImageMetadata { get; set; } = string.Empty;
         public string ErrorMessage { get; set; } = string.Empty;
 
         private async Task GenerateAndPlay()
@@ -40,6 +49,7 @@ namespace SpookyLlamaBlazor.Pages
                 }
 
                 Responses.Add(LatestResponse);
+                ImagePrompt = LatestResponse;
                 var audio = await SpeechClient.SynthesizeAsync(LatestResponse);
                 audioModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./audio.js");
                 await audioModule.InvokeAsync<bool>("play", audioPlayer, audio);
@@ -51,6 +61,33 @@ namespace SpookyLlamaBlazor.Pages
             finally
             {
                 IsGenerating = false;
+            }
+        }
+
+        private async Task GenerateImage()
+        {
+            if (string.IsNullOrWhiteSpace(ImagePrompt))
+            {
+                return;
+            }
+
+            IsGeneratingImage = true;
+            ErrorMessage = string.Empty;
+            try
+            {
+                var image = await ImageClient.GenerateAsync(ImagePrompt);
+                imageModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./image.js");
+                await imageModule.InvokeVoidAsync("show", generatedImage, image.Content);
+                HasGeneratedImage = true;
+                ImageMetadata = $"{image.Model ?? "DreamShaper 8"} · seed {image.Seed ?? "random"}";
+            }
+            catch (Exception)
+            {
+                ErrorMessage = "The image could not be generated.";
+            }
+            finally
+            {
+                IsGeneratingImage = false;
             }
         }
 
@@ -90,13 +127,17 @@ namespace SpookyLlamaBlazor.Pages
 
         public async ValueTask DisposeAsync()
         {
-            if (audioModule is null)
+            if (audioModule is not null)
             {
-                return;
+                await audioModule.InvokeVoidAsync("dispose");
+                await audioModule.DisposeAsync();
             }
 
-            await audioModule.InvokeVoidAsync("dispose");
-            await audioModule.DisposeAsync();
+            if (imageModule is not null)
+            {
+                await imageModule.InvokeVoidAsync("dispose");
+                await imageModule.DisposeAsync();
+            }
         }
     }
 }

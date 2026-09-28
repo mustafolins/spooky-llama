@@ -40,6 +40,39 @@
     </ul>
 }
 
+<section class="image-studio" aria-labelledby="image-studio-title">
+    <header class="image-studio__header">
+        <h2 id="image-studio-title">Nightmare frame</h2>
+        <span>DreamShaper 8 · 512 × 512</span>
+    </header>
+
+    <div class="image-stage" aria-busy="@IsGeneratingImage">
+        <img @ref="generatedImage"
+             class="@(HasGeneratedImage ? null : "image-stage__image--hidden")"
+             alt="Generated illustration for: @ImagePrompt" />
+        @if (!HasGeneratedImage)
+        {
+            <p>@(IsGeneratingImage ? "Generating image..." : "No image generated")</p>
+        }
+    </div>
+
+    <label for="image-prompt">Image prompt</label>
+    <textarea id="image-prompt"
+              rows="3"
+              maxlength="500"
+              @bind="ImagePrompt"
+              @bind:event="oninput"
+              disabled="@IsGeneratingImage"></textarea>
+    <button @onclick="GenerateImage"
+            disabled="@(IsGeneratingImage || string.IsNullOrWhiteSpace(ImagePrompt))">
+        @(IsGeneratingImage ? "Generating image..." : "Generate image")
+    </button>
+    @if (!string.IsNullOrEmpty(ImageMetadata))
+    {
+        <small>@ImageMetadata</small>
+    }
+</section>
+
 <br />
 <p>Want a new context for your story? Click the button below:</p>
 <button @onclick="ClearContext">Clear Context</button>

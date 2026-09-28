@@ -1,0 +1,28 @@
+[project]
+name = "spooky-llama-image-service"
+version = "0.1.0"
+description = "Local DreamShaper image generation service for Spooky Llama"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "accelerate>=1.10,<2",
+    "diffusers>=0.35,<1",
+    "fastapi>=0.116,<1",
+    "pillow>=11.3,<13",
+    "safetensors>=0.6,<1",
+    "torch>=2.8,<3",
+    "transformers>=4.57,<5",
+    "uvicorn[standard]>=0.35,<1",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28,<1",
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

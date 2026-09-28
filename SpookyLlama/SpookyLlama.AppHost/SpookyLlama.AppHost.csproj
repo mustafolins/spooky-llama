@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.Blazor" Version="13.5.4-preview.1.26464.4" />
+    <PackageReference Include="Aspire.Hosting.Python" Version="13.5.4" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Ollama" Version="13.5.1-beta.775" />
   </ItemGroup>
 

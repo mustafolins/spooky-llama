@@ -20,15 +20,36 @@ var speech = builder.AddProject<Projects.SpookyLlamaSpeechService>("speech")
 			"kokoro.onnx"))
 	.WithHttpHealthCheck("/health");
 
+var image = builder.AddUvicornApp(
+		name: "image",
+		appDirectory: "../SpookyLlamaImageService",
+		app: "main:app")
+	.WithUv()
+	.WithHttpEndpoint(env: "PORT")
+	.WithEnvironment("UVICORN_HOST", "0.0.0.0")
+	.WithEnvironment("UVICORN_WORKERS", "1")
+	.WithEnvironment("IMAGE_DEVICE", "cpu")
+	.WithEnvironment("IMAGE_INFERENCE_STEPS", "8")
+	.WithEnvironment(
+		"HF_HOME",
+		Path.Combine(
+			Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+			"spooky-llama",
+			"models",
+			"huggingface"))
+	.WithHttpHealthCheck("/health");
+
 var client = builder.AddBlazorWasmProject<Projects.SpookyLlamaBlazor>("app")
 	.WithReference(api)
-	.WithReference(speech);
+	.WithReference(speech)
+	.WithReference(image);
 
 builder.AddBlazorGateway("web")
 	.WithExternalHttpEndpoints()
 	.WithOtlpExporter(OtlpProtocol.HttpProtobuf)
 	.WithBlazorClientApp(client)
 	.WaitFor(api)
-	.WaitFor(speech);
+	.WaitFor(speech)
+	.WaitFor(image);
 
 builder.Build().Run();
