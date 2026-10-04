@@ -12,7 +12,7 @@ public sealed class KokoroSpeechSynthesizer : ISpeechSynthesizer, IDisposable
     private readonly IHttpClientFactory httpClientFactory;
     private readonly ILogger<KokoroSpeechSynthesizer> logger;
     private readonly string modelPath;
-    private readonly string voiceName;
+    private readonly KokoroVoice voice;
     private readonly Lazy<Task<KokoroWavSynthesizer>> synthesizer;
     private readonly SemaphoreSlim synthesisLock = new(1, 1);
 
@@ -28,7 +28,21 @@ public sealed class KokoroSpeechSynthesizer : ISpeechSynthesizer, IDisposable
             "spooky-llama",
             "models",
             "kokoro.onnx");
-        voiceName = configuration["Speech:Kokoro:Voice"] ?? "af_sarah";
+        var configuredVoiceName = configuration["Speech:Kokoro:Voice"];
+        if (string.IsNullOrWhiteSpace(configuredVoiceName))
+        {
+            var voice1 = KokoroVoiceManager.GetVoice("af_nicole");
+            var voice2 = KokoroVoiceManager.GetVoice("am_echo");
+            voice = KokoroVoiceManager.Mix([
+                (voice1, 10.0f),
+                (voice2, 3.0f)
+            ]);
+        }
+        else
+        {
+            voice = KokoroVoiceManager.GetVoice(configuredVoiceName);
+        }
+
         synthesizer = new Lazy<Task<KokoroWavSynthesizer>>(
             LoadSynthesizerAsync,
             LazyThreadSafetyMode.ExecutionAndPublication);
@@ -42,7 +56,6 @@ public sealed class KokoroSpeechSynthesizer : ISpeechSynthesizer, IDisposable
         try
         {
             var wavSynthesizer = await synthesizer.Value;
-            var voice = KokoroVoiceManager.GetVoice(voiceName);
             var pcmBytes = await wavSynthesizer.SynthesizeAsync(text, voice);
             if (pcmBytes.Length == 0)
             {
