@@ -1,6 +1,7 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
 var ollama = builder.AddOllama("ollama")
+	.WithGPUSupport()
 	.WithDataVolume();
 
 var llama = ollama.AddModel("llama", "llama3.2");
