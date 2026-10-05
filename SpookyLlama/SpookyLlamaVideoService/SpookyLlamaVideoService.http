@@ -1,0 +1,6 @@
+@SpookyLlamaVideoService_HostAddress = https://localhost:7291
+
+POST {{SpookyLlamaVideoService_HostAddress}}/video
+Accept: video/mp4
+
+###

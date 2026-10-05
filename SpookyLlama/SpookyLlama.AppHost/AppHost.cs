@@ -1,5 +1,8 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
+var cache = builder.AddRedis("cache")
+	.WithDataVolume();
+
 var ollama = builder.AddOllama("ollama")
 	.WithGPUSupport()
 	.WithDataVolume();
@@ -19,6 +22,8 @@ var speech = builder.AddProject<Projects.SpookyLlamaSpeechService>("speech")
 			"spooky-llama",
 			"models",
 			"kokoro.onnx"))
+	.WithReference(cache)
+	.WaitFor(cache)
 	.WithHttpHealthCheck("/health");
 
 var image = builder.AddUvicornApp(
@@ -38,6 +43,15 @@ var image = builder.AddUvicornApp(
 			"spooky-llama",
 			"models",
 			"huggingface"))
+	.WithReference(cache)
+	.WaitFor(cache)
+	.WithHttpHealthCheck("/health");
+
+var video = builder.AddProject<Projects.SpookyLlamaVideoService>("video")
+	.WithReference(speech)
+	.WaitFor(speech)
+	.WithReference(image)
+	.WaitFor(image)
 	.WithHttpHealthCheck("/health");
 
 builder.AddProject<Projects.SpookyLlamaBlazor>("web")
@@ -48,6 +62,8 @@ builder.AddProject<Projects.SpookyLlamaBlazor>("web")
 	.WithReference(speech)
 	.WaitFor(speech)
 	.WithReference(image)
-	.WaitFor(image);
+	.WaitFor(image)
+	.WithReference(video)
+	.WaitFor(video);
 
 builder.Build().Run();

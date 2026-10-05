@@ -7,8 +7,8 @@
 <h2>Welcome to Spooky Llama!</h2>
 <p>Enter a prompt to generate a spooky story:</p>
 
-<input type="text" @bind-value="@Prompt" disabled="@IsGenerating" />
-<button @onclick="GenerateAndPlay" disabled="@IsGenerating">
+<input type="text" @bind-value="@Prompt" disabled="@(IsGenerating || IsGeneratingVideo)" />
+<button @onclick="GenerateAndPlay" disabled="@(IsGenerating || IsGeneratingVideo)">
     @(IsGenerating ? "Generating..." : "Generate")
 </button>
 <audio @ref="audioPlayer" controls></audio>
@@ -62,15 +62,38 @@
               maxlength="500"
               @bind="ImagePrompt"
               @bind:event="oninput"
-              disabled="@IsGeneratingImage"></textarea>
+                            disabled="@(IsGeneratingImage || IsGeneratingVideo)"></textarea>
     <button @onclick="GenerateImage"
-            disabled="@(IsGeneratingImage || string.IsNullOrWhiteSpace(ImagePrompt))">
+                        disabled="@(IsGeneratingImage || IsGeneratingVideo || string.IsNullOrWhiteSpace(ImagePrompt))">
         @(IsGeneratingImage ? "Generating image..." : "Generate image")
     </button>
     @if (!string.IsNullOrEmpty(ImageMetadata))
     {
         <small>@ImageMetadata</small>
     }
+</section>
+
+<section class="video-studio" aria-labelledby="video-studio-title">
+    <header class="video-studio__header">
+        <h2 id="video-studio-title">Story reel</h2>
+        <span>MP4 · 30 fps</span>
+    </header>
+
+    <div class="video-stage" aria-busy="@IsGeneratingVideo" aria-live="polite">
+        <video @ref="videoPlayer"
+               class="@(HasGeneratedVideo ? null : "video-stage__video--hidden")"
+               controls
+               preload="metadata"></video>
+        @if (!HasGeneratedVideo)
+        {
+            <p>@(IsGeneratingVideo ? "Composing video..." : "No video generated")</p>
+        }
+    </div>
+
+    <button @onclick="GenerateVideo"
+            disabled="@(IsGenerating || IsGeneratingImage || IsGeneratingVideo || string.IsNullOrWhiteSpace(latestMediaPrompt))">
+        @(IsGeneratingVideo ? "Composing video..." : "Generate video")
+    </button>
 </section>
 
 <br />

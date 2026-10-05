@@ -3,7 +3,7 @@ import unittest
 import httpx
 
 from image_generator import GeneratedImage
-from main import app, get_generator
+from main import app, get_generator, get_latest_image_store
 
 
 PNG_BYTES = b"\x89PNG\r\n\x1a\nimage"
@@ -29,10 +29,23 @@ class FakeGenerator:
         return GeneratedImage(PNG_BYTES, 33, 125.4)
 
 
+class FakeLatestImageStore:
+    def __init__(self) -> None:
+        self.latest: GeneratedImage | None = None
+
+    async def set(self, image: GeneratedImage) -> None:
+        self.latest = image
+
+    async def get(self) -> GeneratedImage | None:
+        return self.latest
+
+
 class ImageApiTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.generator = FakeGenerator()
+        self.latest_images = FakeLatestImageStore()
         app.dependency_overrides[get_generator] = lambda: self.generator
+        app.dependency_overrides[get_latest_image_store] = lambda: self.latest_images
         self.client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
             base_url="http://test",
@@ -80,6 +93,26 @@ class ImageApiTests(unittest.IsolatedAsyncioTestCase):
             self.generator.last_prompt,
             "A moonlit figure emerging from the fog",
         )
+
+    async def test_latest_before_generation_returns_not_found(self) -> None:
+        response = await self.client.get("/generate/latest")
+
+        self.assertEqual(response.status_code, 404)
+
+    async def test_latest_after_generation_returns_most_recent_png(self) -> None:
+        generation_response = await self.client.post(
+            "/generate",
+            json={"prompt": "A moonlit figure emerging from the fog", "seed": 33},
+        )
+        generation_response.raise_for_status()
+
+        response = await self.client.get("/generate/latest")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"], "image/png")
+        self.assertEqual(response.headers["x-image-model"], "Lykon/dreamshaper-8")
+        self.assertEqual(response.headers["x-image-seed"], "33")
+        self.assertEqual(response.content, PNG_BYTES)
 
 
 if __name__ == "__main__":

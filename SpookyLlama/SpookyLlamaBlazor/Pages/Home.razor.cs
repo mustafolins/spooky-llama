@@ -18,6 +18,9 @@ namespace SpookyLlamaBlazor.Pages
         private ImageClient ImageClient { get; set; } = default!;
 
         [Inject]
+        private VideoClient VideoClient { get; set; } = default!;
+
+        [Inject]
         private IJSRuntime JSRuntime { get; set; } = default!;
 
         [Inject]
@@ -25,15 +28,20 @@ namespace SpookyLlamaBlazor.Pages
 
         private ElementReference audioPlayer;
         private ElementReference generatedImage;
+        private ElementReference videoPlayer;
         private IJSObjectReference? audioModule;
         private IJSObjectReference? imageModule;
+        private IJSObjectReference? videoModule;
+        private string latestMediaPrompt = string.Empty;
 
         public string Prompt { get; set; } = DefaultPrompt;
         public string LatestResponse { get; set; } = string.Empty;
         public List<string> Responses { get; set; } = [];
         public bool IsGenerating { get; set; }
         public bool IsGeneratingImage { get; set; }
+        public bool IsGeneratingVideo { get; set; }
         public bool HasGeneratedImage { get; set; }
+        public bool HasGeneratedVideo { get; set; }
         public string ImagePrompt { get; set; } = DefaultPrompt;
         public string ImageMetadata { get; set; } = string.Empty;
         public string ErrorMessage { get; set; } = string.Empty;
@@ -54,8 +62,12 @@ namespace SpookyLlamaBlazor.Pages
                 }
 
                 Responses.Add(LatestResponse);
-                ImagePrompt = LatestResponse;
-                var audio = await SpeechClient.SynthesizeAsync(LatestResponse);
+                var mediaPrompt = LatestResponse;
+                ImagePrompt = mediaPrompt;
+                latestMediaPrompt = string.Empty;
+                HasGeneratedVideo = false;
+                var audio = await SpeechClient.SynthesizeAsync(mediaPrompt);
+                latestMediaPrompt = mediaPrompt;
                 audioModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./audio.js");
                 await audioModule.InvokeAsync<bool>("play", audioPlayer, audio);
             }
@@ -66,6 +78,44 @@ namespace SpookyLlamaBlazor.Pages
             finally
             {
                 IsGenerating = false;
+            }
+        }
+
+        private async Task GenerateVideo()
+        {
+            if (string.IsNullOrWhiteSpace(latestMediaPrompt))
+            {
+                return;
+            }
+
+            IsGeneratingVideo = true;
+            IsGeneratingImage = true;
+            HasGeneratedVideo = false;
+            ErrorMessage = string.Empty;
+            try
+            {
+                var mediaPrompt = latestMediaPrompt;
+                ImagePrompt = mediaPrompt;
+                var image = await ImageClient.GenerateAsync(mediaPrompt);
+                imageModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./image.js");
+                await imageModule.InvokeVoidAsync("show", generatedImage, image.Content);
+                HasGeneratedImage = true;
+                ImageMetadata = $"{image.Model ?? "DreamShaper 8"} · seed {image.Seed ?? "random"}";
+
+                var video = await VideoClient.GenerateAsync();
+                videoModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./video.js");
+                await videoModule.InvokeAsync<bool>("play", videoPlayer, video);
+                HasGeneratedVideo = true;
+            }
+            catch (Exception exception)
+            {
+                Logger.LogError(exception, "Video generation failed.");
+                ErrorMessage = "The video could not be generated.";
+            }
+            finally
+            {
+                IsGeneratingImage = false;
+                IsGeneratingVideo = false;
             }
         }
 
@@ -143,6 +193,12 @@ namespace SpookyLlamaBlazor.Pages
             {
                 await imageModule.InvokeVoidAsync("dispose");
                 await imageModule.DisposeAsync();
+            }
+
+            if (videoModule is not null)
+            {
+                await videoModule.InvokeVoidAsync("dispose");
+                await videoModule.DisposeAsync();
             }
         }
     }

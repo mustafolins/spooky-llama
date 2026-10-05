@@ -18,6 +18,11 @@ builder.Services.AddHttpClient<SpeechClient>(client =>
     client.BaseAddress = new Uri("https+http://speech");
     client.Timeout = TimeSpan.FromMinutes(3);
 });
+builder.Services.AddHttpClient<VideoClient>(client =>
+{
+    client.BaseAddress = new Uri("https+http://video");
+    client.Timeout = TimeSpan.FromMinutes(5);
+});
 var imageEndpoint = builder.Configuration["services:image:https:0"]
     ?? builder.Configuration["services:image:http:0"];
 if (imageEndpoint is null && !builder.Environment.IsDevelopment())
